@@ -29,6 +29,58 @@
             50% { opacity: 1; }
             100% { opacity: 0.7; }
         }
+        /* תוספת עבור Widget */
+        .user-widget {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .user-widget.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .widget-content {
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+        .user-widget.show .widget-content {
+            transform: translateY(0);
+        }
+        .user-property {
+            transition: all 0.2s ease;
+        }
+        .user-property:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .user-row {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .user-row:hover {
+            background-color: rgba(99, 102, 241, 0.1);
+        }
+        .avatar-gradient {
+            background: linear-gradient(135deg, #6366f1, #4f46e5, #7c3aed);
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0px); }
+        }
+        .float-animation {
+            animation: float 3s ease-in-out infinite;
+        }
     </style>
     <script>
         tailwind.config = {
@@ -148,12 +200,12 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             {% for user in users %}
-                            <tr class="hover:bg-gray-50 transition-colors">
+                            <tr class="hover:bg-gray-50 transition-colors user-row" onclick="showUserWidget('{{ user.id }}', '{{ user.full_name }}', '{{ user.email }}', '{{ user.created_at.split('T')[0] if user.created_at else 'לא ידוע' }}')">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="font-medium text-gray-900">{{ user.full_name }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-gray-600">
-                                    <a href="mailto:{{ user.email }}" class="hover:text-primary-600">{{ user.email }}</a>
+                                    <a href="mailto:{{ user.email }}" class="hover:text-primary-600" onclick="event.stopPropagation()">{{ user.email }}</a>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-gray-500">
                                     <span class="flex items-center">
@@ -219,6 +271,93 @@
             </div>
         </div>
 
+        <!-- User Details Widget -->
+        <div id="user-widget" class="user-widget">
+            <div class="widget-content glass-effect bg-white rounded-xl p-0 shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+                <!-- Header -->
+                <div class="bg-gradient-to-r from-primary-600 to-primary-700 p-6 text-white relative">
+                    <button onclick="closeUserWidget()" class="absolute left-4 top-4 text-white hover:text-white/80 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                    <div class="flex items-center">
+                        <div class="avatar-gradient w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg mr-4 float-animation">
+                            <span id="user-initials"></span>
+                        </div>
+                        <div>
+                            <h3 id="user-name" class="text-2xl font-bold"></h3>
+                            <p class="text-white/80 flex items-center mt-1">
+                                <i class="fas fa-id-badge mr-2"></i>
+                                <span>מזהה: </span>
+                                <span id="user-id" class="mr-1"></span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Content -->
+                <div class="p-6">
+                    <div class="grid grid-cols-1 gap-4">
+                        <!-- Email -->
+                        <div class="user-property bg-primary-50 rounded-lg p-4 flex items-start">
+                            <div class="bg-primary-100 p-3 rounded-full mr-3">
+                                <i class="fas fa-envelope text-primary-600 text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-500 text-sm">כתובת אימייל</h4>
+                                <p id="user-email" class="text-gray-800 font-medium"></p>
+                                <a id="user-email-link" href="#" class="text-primary-600 text-sm hover:text-primary-700 inline-flex items-center mt-1">
+                                    <i class="fas fa-paper-plane ml-1"></i>
+                                    שלח אימייל
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- Created Date -->
+                        <div class="user-property bg-blue-50 rounded-lg p-4 flex items-start">
+                            <div class="bg-blue-100 p-3 rounded-full mr-3">
+                                <i class="fas fa-calendar-alt text-blue-600 text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-500 text-sm">תאריך הוספה</h4>
+                                <p id="user-date" class="text-gray-800 font-medium"></p>
+                                <p class="text-blue-600 text-sm mt-1">
+                                    <i class="fas fa-clock ml-1"></i>
+                                    <span id="days-ago">לפני מספר ימים</span>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Activity Status -->
+                        <div class="user-property bg-green-50 rounded-lg p-4 flex items-start">
+                            <div class="bg-green-100 p-3 rounded-full mr-3">
+                                <i class="fas fa-chart-line text-green-600 text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-500 text-sm">סטטוס פעילות</h4>
+                                <p class="text-gray-800 font-medium">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">
+                                        <span class="w-2 h-2 bg-green-500 rounded-full mr-1.5"></span>
+                                        פעיל
+                                    </span>
+                                </p>
+                                <p class="text-green-600 text-sm mt-1">
+                                    <i class="fas fa-user-check ml-1"></i>
+                                    משתמש רשום במערכת
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="mt-6 flex space-x-4 space-x-reverse">
+                        <button onclick="closeUserWidget()" class="flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
+                            <i class="fas fa-times ml-2"></i>סגור
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="mt-8 text-center text-gray-500 py-4">
             <p>© 2025 מערכת ניהול משתמשים | פותח עם <i class="fas fa-heart text-red-500"></i> באמצעות Flask ו-Supabase</p>
@@ -253,6 +392,58 @@
                     statusMessage.textContent = 'שגיאה בבדיקת החיבור לבסיס הנתונים';
                     statusContainer.classList.add('bg-red-100', 'text-red-700');
                 });
+        });
+
+        // User Widget Functions
+        function showUserWidget(id, name, email, date) {
+            const widget = document.getElementById('user-widget');
+            widget.classList.add('show');
+            document.body.style.overflow = 'hidden';
+
+            // Fill user data
+            document.getElementById('user-id').textContent = id;
+            document.getElementById('user-name').textContent = name;
+            document.getElementById('user-email').textContent = email;
+            document.getElementById('user-email-link').href = `mailto:${email}`;
+            document.getElementById('user-date').textContent = date;
+            
+            // Set initials avatar
+            const initials = name.split(' ')
+                .map(part => part.charAt(0))
+                .join('')
+                .toUpperCase();
+            document.getElementById('user-initials').textContent = initials;
+            
+            // Calculate days ago
+            if (date && date !== 'לא ידוע') {
+                const diffTime = Math.abs(new Date() - new Date(date));
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                document.getElementById('days-ago').textContent = diffDays === 1 
+                    ? 'נוסף אתמול' 
+                    : `נוסף לפני ${diffDays} ימים`;
+            } else {
+                document.getElementById('days-ago').textContent = 'תאריך לא ידוע';
+            }
+        }
+
+        function closeUserWidget() {
+            const widget = document.getElementById('user-widget');
+            widget.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        // Close when clicking outside the widget content
+        document.getElementById('user-widget').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeUserWidget();
+            }
+        });
+
+        // Close with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeUserWidget();
+            }
         });
     </script>
 </body>
